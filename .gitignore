@@ -1,2 +1,4 @@
 .env
 database.db
+.AWS_EC2_DEPLOYMENT_GUIDE.md
+.QUICK_START.md

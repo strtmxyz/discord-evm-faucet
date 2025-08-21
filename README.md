@@ -67,7 +67,7 @@ Once the bot is running and added to a Discord server, users can request tokens 
 
 The bot will:
 - Validate the request.
-- Send 100 tokens to the provided address.
+- Send 0.1 native tokens to the provided address.
 - Respond with the transaction hash.
 
 ---

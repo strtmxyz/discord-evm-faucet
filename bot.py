@@ -30,7 +30,7 @@ def send_eth(recipient_address):
     sender_address_checksum = web3.to_checksum_address(SENDER_ADDRESS)
     recipient_address_checksum = web3.to_checksum_address(recipient_address)
     nonce = web3.eth.get_transaction_count(sender_address_checksum)
-    ether_value = web3.to_wei(100, 'ether')
+    ether_value = web3.to_wei(0.1, 'ether')
     gas_price = web3.eth.gas_price
 
     transaction = {
@@ -83,8 +83,8 @@ async def on_ready():
         print(f"Error during sync: {e}")
 
 # Implementation of the /faucet command
-@bot.tree.command(name="faucet", description="Request 100 coin to your EVM address.")
-@app_commands.describe(address="The EVM address to send coin")
+@bot.tree.command(name="faucet", description="Request 0.1 coin to your Monad address.")
+@app_commands.describe(address="The Monad address to send coin")
 async def faucet(interaction: discord.Interaction, address: str):
     user_timestamp = get_timestamp(interaction.user.id)
 
@@ -92,7 +92,7 @@ async def faucet(interaction: discord.Interaction, address: str):
         try:
             tx_hash = send_eth(address)
             register_timestamp(interaction.user.id, int(time.time()))
-            await interaction.response.send_message(f"Sending 100 coin to address: {address}\nTx Hash: {tx_hash}")
+            await interaction.response.send_message(f"Sending 0.1 coin to address: {address}\nTx Hash: {tx_hash}")
         except Exception as e:
             await interaction.response.send_message(f"Error during transaction: {str(e)}", ephemeral=True)
     else:
