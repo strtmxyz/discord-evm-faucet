@@ -36,16 +36,23 @@ nano .env
 # - DISCORD_TOKEN (Discord bot token)
 ```
 
-### 5. Start Bot
+### 5. Start Bot with PM2
 ```bash
-# Start service
-sudo systemctl start discord-bot
+# Install PM2
+sudo npm install -g pm2
+
+# Start bot
+pm2 start bot.py --name discord-faucet-bot --interpreter ./venv/bin/python3
+
+# Save PM2 config and setup auto-start
+pm2 save
+pm2 startup
 
 # Check status
-sudo systemctl status discord-bot
+pm2 status
 
 # View logs
-sudo journalctl -u discord-bot -f
+pm2 logs discord-faucet-bot
 ```
 
 ## 🔧 Discord Bot Configuration
@@ -63,27 +70,27 @@ sudo journalctl -u discord-bot -f
 - [ ] .env file configured
 - [ ] Discord bot token set
 - [ ] Bot started successfully
-- [ ] Test `/faucet` command in Discord
+- [ ] Test `!faucet` command in Discord
 
 ## 🚨 Quick Troubleshooting
 
 **Bot cannot connect:**
 ```bash
-sudo journalctl -u discord-bot -f
+pm2 logs discord-faucet-bot
 # Check Discord token and internet connection
 ```
 
 **Bot crashes:**
 ```bash
-sudo systemctl restart discord-bot
-sudo journalctl -u discord-bot -p err
+pm2 restart discord-faucet-bot
+pm2 logs discord-faucet-bot --err
 ```
 
 **Update bot:**
 ```bash
 cd ~/discord-bot/discord-evm-faucet
 git pull
-sudo systemctl restart discord-bot
+pm2 restart discord-faucet-bot
 ```
 
 ## 📚 Detailed Documentation
@@ -96,4 +103,4 @@ See `AWS_EC2_DEPLOYMENT_GUIDE.md` for more details about:
 
 ---
 
-**🎯 Goal**: Bot will send **0.1 native tokens** to each user every 24 hours via `/faucet` command
+**🎯 Goal**: Bot will send **0.1 native tokens** to each user every 24 hours via `!faucet` command

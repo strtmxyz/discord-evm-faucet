@@ -19,6 +19,7 @@ DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 
 # Configure bot intents
 intents = discord.Intents.default()
+intents.message_content = True  # Required for prefix commands
 bot = commands.Bot(command_prefix='!', intents=intents)
 
 # Connect to an Ethereum provider
@@ -73,30 +74,84 @@ def get_timestamp(address):
 
 create_table()
 
-# Event on_ready to sync commands
+# Event on_ready
 @bot.event
 async def on_ready():
+    print(f"Bot is ready! Logged in as {bot.user.name}")
+    print(f"Bot ID: {bot.user.id}")
+    print(f"Prefix: !")
+    print(f"Commands: !faucet, !info")
+
+# Info command
+@bot.command(name="info", description="Show bot information and commands")
+async def info_command(ctx):
+    info_msg = "🤖 **Monad Faucet Bot**\n\n"
+    info_msg += "**Commands:**\n"
+    info_msg += "• `!faucet <address>` - Request 0.1 MONAD tokens\n"
+    info_msg += "• `!info` - Show this information\n\n"
+    info_msg += "**Example:** `!faucet 0x1234...`\n"
+    info_msg += "**Rate Limit:** 1 request per 24 hours\n"
+    info_msg += "**Network:** Monad Testnet (Chain ID: 10143)\n"
+    info_msg += "**Amount:** 0.1 MONAD per request"
+    
+    await ctx.send(info_msg)
+
+# Implementation of the !faucet command
+@bot.command(name="faucet", description="Request 0.1 coin to your Monad address.")
+async def faucet(ctx, address: str):
     try:
-        synced = await bot.tree.sync()
-        print(f"Slash commands synced: {synced}")
+        # Check if address is provided
+        if not address:
+            await ctx.send("❌ Please provide a valid Monad address: `!faucet <address>`")
+            return
+        
+        # Validate address format
+        if not address.startswith('0x') or len(address) != 42:
+            await ctx.send("❌ Invalid address format. Please provide a valid Monad address starting with 0x")
+            return
+            
+        user_timestamp = get_timestamp(ctx.author.id)
+
+        if (user_timestamp is None) or ((int(time.time()) - user_timestamp) > 86400):
+            try:
+                # Send transaction
+                tx_hash = send_eth(address)
+                register_timestamp(ctx.author.id, int(time.time()))
+                
+                # Create success message
+                success_msg = f"✅ **Faucet Success!**\n"
+                success_msg += f"**Amount:** 0.1 MONAD\n"
+                success_msg += f"**Address:** `{address}`\n"
+                success_msg += f"**Transaction Hash:** `{tx_hash}`\n"
+                success_msg += f"**Next request:** Available in 24 hours"
+                
+                await ctx.send(success_msg)
+                print(f"Faucet request successful for user {ctx.author.id} -> {address}")
+                
+            except Exception as e:
+                error_msg = f"❌ **Transaction Error**\n"
+                error_msg += f"**Error:** {str(e)}\n"
+                error_msg += f"Please try again later or contact support."
+                
+                await ctx.send(error_msg)
+                print(f"Faucet error for user {ctx.author.id}: {str(e)}")
+        else:
+            remaining_time = 86400 - (int(time.time()) - user_timestamp)
+            hours = remaining_time // 3600
+            minutes = (remaining_time % 3600) // 60
+            
+            cooldown_msg = f"⏰ **Cooldown Active**\n"
+            cooldown_msg += f"You can request again in **{hours}h {minutes}m**\n"
+            cooldown_msg += f"Rate limit: 1 request per 24 hours"
+            
+            await ctx.send(cooldown_msg)
+            
     except Exception as e:
-        print(f"Error during sync: {e}")
-
-# Implementation of the /faucet command
-@bot.tree.command(name="faucet", description="Request 0.1 coin to your Monad address.")
-@app_commands.describe(address="The Monad address to send coin")
-async def faucet(interaction: discord.Interaction, address: str):
-    user_timestamp = get_timestamp(interaction.user.id)
-
-    if (user_timestamp is None) or ((int(time.time()) - user_timestamp) > 86400):
+        print(f"Unexpected error in faucet command: {str(e)}")
         try:
-            tx_hash = send_eth(address)
-            register_timestamp(interaction.user.id, int(time.time()))
-            await interaction.response.send_message(f"Sending 0.1 coin to address: {address}\nTx Hash: {tx_hash}")
-        except Exception as e:
-            await interaction.response.send_message(f"Error during transaction: {str(e)}", ephemeral=True)
-    else:
-        await interaction.response.send_message("You have already withdrawn in the last 24 hours. Please try again later.", ephemeral=True)
+            await ctx.send("❌ An unexpected error occurred. Please try again later.")
+        except:
+            print("Could not send error message to user")
 
 # Run the bot
 bot.run(DISCORD_TOKEN)

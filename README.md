@@ -46,23 +46,41 @@ mv .env.example .env
 ---
 
 ## Run the Bot
-Start the bot with:
+
+### Local Development
 ```bash
 python bot.py
+```
+
+### Production with PM2
+```bash
+# Install PM2
+npm install -g pm2
+
+# Start with PM2
+pm2 start ecosystem.config.js
+
+# Save configuration
+pm2 save
+
+# Setup auto-start on boot
+pm2 startup
 ```
 
 ---
 
 ## Notes
 - The bot uses SQLite for managing user timestamps. The database file `database.db` will be created in the same directory.
-- The bot is configured to sync Discord slash commands automatically.
+- The bot uses prefix commands (`!`) instead of slash commands for better compatibility.
+- PM2 is recommended for production deployment with automatic restarts and monitoring.
 
 ---
 
-## Example Command
-Once the bot is running and added to a Discord server, users can request tokens using the `/faucet` command:
+## Example Commands
+Once the bot is running and added to a Discord server, users can request tokens using these commands:
 ```
-/faucet address:0xYourEthereumAddressHere
+!faucet 0xYourEthereumAddressHere
+!info
 ```
 
 The bot will:

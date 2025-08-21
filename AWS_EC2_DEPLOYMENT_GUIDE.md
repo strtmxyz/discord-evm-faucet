@@ -53,10 +53,13 @@ sudo apt update && sudo apt upgrade -y
 sudo apt install -y python3 python3-pip python3-venv git curl wget
 ```
 
-### 2.3 Install Node.js (if needed)
+### 2.3 Install Node.js and PM2
 ```bash
 curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
 sudo apt-get install -y nodejs
+
+# Install PM2 globally
+sudo npm install -g pm2
 ```
 
 ---
@@ -134,46 +137,60 @@ source venv/bin/activate
 python3 bot.py
 ```
 
-### 5.2 Create Systemd Service (for auto-start)
+### 5.2 Setup PM2 Process Manager
+PM2 provides better process management, monitoring, and auto-restart capabilities.
+
 ```bash
-sudo nano /etc/systemd/system/discord-bot.service
+# Create PM2 ecosystem file
+nano ecosystem.config.js
 ```
 
-**Service file content:**
-```ini
-[Unit]
-Description=Discord EVM Faucet Bot
-After=network.target
-
-[Service]
-Type=simple
-User=ubuntu
-WorkingDirectory=/home/ubuntu/discord-bot/discord-evm-faucet
-Environment=PATH=/home/ubuntu/discord-bot/discord-evm-faucet/venv/bin
-ExecStart=/home/ubuntu/discord-bot/discord-evm-faucet/venv/bin/python3 bot.py
-Restart=always
-RestartSec=10
-
-[Install]
-WantedBy=multi-user.target
+**Ecosystem file content:**
+```javascript
+module.exports = {
+  apps: [{
+    name: 'discord-faucet-bot',
+    script: 'bot.py',
+    interpreter: './venv/bin/python3',
+    cwd: '/home/ubuntu/discord-bot/discord-evm-faucet',
+    instances: 1,
+    autorestart: true,
+    watch: false,
+    max_memory_restart: '1G',
+    env: {
+      NODE_ENV: 'production'
+    },
+    error_file: './logs/err.log',
+    out_file: './logs/out.log',
+    log_file: './logs/combined.log',
+    time: true
+  }]
+};
 ```
 
-### 5.3 Enable Service
+### 5.3 Start Bot with PM2
 ```bash
-# Reload systemd
-sudo systemctl daemon-reload
+# Create logs directory
+mkdir -p logs
 
-# Enable service
-sudo systemctl enable discord-bot
+# Start bot with PM2
+pm2 start ecosystem.config.js
 
-# Start service
-sudo systemctl start discord-bot
+# Save PM2 configuration
+pm2 save
+
+# Setup PM2 to start on boot
+pm2 startup
+# Follow the instructions provided by PM2
 
 # Check status
-sudo systemctl status discord-bot
+pm2 status
 
 # View logs
-sudo journalctl -u discord-bot -f
+pm2 logs discord-faucet-bot
+
+# Monitor in real-time
+pm2 monit
 ```
 
 ---
@@ -206,21 +223,39 @@ cp .env .env.backup
 
 ## 📊 Step 7: Monitoring and Maintenance
 
-### 7.1 Check logs
+### 7.1 Monitor and Check Logs
 ```bash
 # View real-time logs
-sudo journalctl -u discord-bot -f
+pm2 logs discord-faucet-bot --lines 100
 
-# View today's logs
-sudo journalctl -u discord-bot --since today
+# View specific log files
+tail -f logs/combined.log
+tail -f logs/err.log
+tail -f logs/out.log
 
-# View error logs
-sudo journalctl -u discord-bot -p err
+# PM2 monitoring dashboard
+pm2 monit
+
+# Check process status
+pm2 status
 ```
 
-### 7.2 Restart Bot
+### 7.2 PM2 Management Commands
 ```bash
-sudo systemctl restart discord-bot
+# Restart bot
+pm2 restart discord-faucet-bot
+
+# Stop bot
+pm2 stop discord-faucet-bot
+
+# Delete process
+pm2 delete discord-faucet-bot
+
+# Reload (zero-downtime restart)
+pm2 reload discord-faucet-bot
+
+# Show detailed info
+pm2 show discord-faucet-bot
 ```
 
 ### 7.3 Update Bot
@@ -229,7 +264,9 @@ cd ~/discord-bot/discord-evm-faucet
 git pull origin main
 source venv/bin/activate
 pip install -r requirements.txt
-sudo systemctl restart discord-bot
+
+# Restart with PM2
+pm2 restart discord-faucet-bot
 ```
 
 ---
@@ -270,8 +307,8 @@ sudo systemctl restart discord-bot
 - [ ] .env file has been configured
 - [ ] Discord Bot Token has been set
 - [ ] Ethereum provider has been configured
-- [ ] Systemd service has been created
-- [ ] Bot has been started and is running stably
+- [ ] PM2 has been installed and configured
+- [ ] Bot has been started with PM2 and is running stably
 - [ ] Security groups have been configured
 - [ ] Firewall has been enabled
 - [ ] Bot has been tested with /faucet command

@@ -27,6 +27,12 @@ sudo apt update && sudo apt upgrade -y
 echo -e "${YELLOW}🔧 Installing dependencies...${NC}"
 sudo apt install -y python3 python3-pip python3-venv git curl wget
 
+# Install Node.js and PM2
+echo -e "${YELLOW}📦 Installing Node.js and PM2...${NC}"
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt-get install -y nodejs
+sudo npm install -g pm2
+
 # Create bot directory
 echo -e "${YELLOW}📁 Creating bot directory...${NC}"
 mkdir -p ~/discord-bot
@@ -80,30 +86,33 @@ else
     echo -e "${GREEN}✅ .env file already exists${NC}"
 fi
 
-# Create systemd service
-echo -e "${YELLOW}🔧 Creating systemd service...${NC}"
-sudo tee /etc/systemd/system/discord-bot.service > /dev/null << EOF
-[Unit]
-Description=Discord EVM Faucet Bot
-After=network.target
-
-[Service]
-Type=simple
-User=$USER
-WorkingDirectory=$HOME/discord-bot/discord-evm-faucet
-Environment=PATH=$HOME/discord-bot/discord-evm-faucet/venv/bin
-ExecStart=$HOME/discord-bot/discord-evm-faucet/venv/bin/python3 bot.py
-Restart=always
-RestartSec=10
-
-[Install]
-WantedBy=multi-user.target
+# Create PM2 ecosystem file
+echo -e "${YELLOW}🔧 Creating PM2 ecosystem file...${NC}"
+cat > ecosystem.config.js << EOF
+module.exports = {
+  apps: [{
+    name: 'discord-faucet-bot',
+    script: 'bot.py',
+    interpreter: './venv/bin/python3',
+    cwd: '$HOME/discord-bot/discord-evm-faucet',
+    instances: 1,
+    autorestart: true,
+    watch: false,
+    max_memory_restart: '1G',
+    env: {
+      NODE_ENV: 'production'
+    },
+    error_file: './logs/err.log',
+    out_file: './logs/out.log',
+    log_file: './logs/combined.log',
+    time: true
+  }]
+};
 EOF
 
-# Reload systemd and enable service
-echo -e "${YELLOW}🚀 Enabling service...${NC}"
-sudo systemctl daemon-reload
-sudo systemctl enable discord-bot
+# Create logs directory
+echo -e "${YELLOW}📁 Creating logs directory...${NC}"
+mkdir -p logs
 
 # Set proper permissions for .env file
 echo -e "${YELLOW}🔒 Setting file permissions...${NC}"
@@ -115,9 +124,10 @@ cp .env .env.backup
 echo -e "${GREEN}✅ Deployment completed!${NC}"
 echo ""
 echo -e "${YELLOW}📋 Next steps:${NC}"
-echo "1. Update .env file with actual information"
-echo "2. Start bot: sudo systemctl start discord-bot"
-echo "3. Check status: sudo systemctl status discord-bot"
-echo "4. View logs: sudo journalctl -u discord-bot -f"
+echo "1. Update .env file with actual information: nano .env"
+echo "2. Start bot: pm2 start ecosystem.config.js"
+echo "3. Save PM2 config: pm2 save && pm2 startup"
+echo "4. Check status: pm2 status"
+echo "5. View logs: pm2 logs discord-faucet-bot"
 echo ""
-echo -e "${GREEN}🎉 Bot is ready to run!${NC}"
+echo -e "${GREEN}🎉 Bot is ready to run with PM2!${NC}"
